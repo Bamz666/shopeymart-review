@@ -1,9 +1,8 @@
 import React, { Component } from "react";
 import { Row, Col, Container } from "react-bootstrap";
 import { Hasil, ListCategories, Menus } from "../components";
-import { API_URL } from "../utils/constants";
-import axios from "axios";
 import swal from "sweetalert";
+import { API_URL } from "../utils/constants";
 
 export default class Home extends Component {
   constructor(props) {
@@ -11,6 +10,7 @@ export default class Home extends Component {
 
     this.state = {
       menus: [],
+      categories: [],
       categoriYangDipilih: "Makanan",
       keranjangs: [],
     };
@@ -21,105 +21,82 @@ export default class Home extends Component {
   };
 
   componentDidMount() {
-    axios
-      .get(API_URL + "products?category.nama=" + this.state.categoriYangDipilih)
-      .then((res) => {
-        const menus = res.data;
-        this.setState({ menus });
-      })
-      .catch((error) => {
-        console.log("Error yaa ", error);
-      });
-
-    axios
-      .get(API_URL + "keranjangs")
-      .then((res) => {
-        const keranjangs = res.data;
-        this.setState({ keranjangs });
-      })
-      .catch((error) => {
-        console.log("Error yaa ", error);
-      });
+    this.fetchData();
   }
 
   componentDidUpdate(prevState) {
     if (this.state.keranjangs !== prevState.keranjangs) {
-      axios
-        .get(API_URL + "keranjangs")
-        .then((res) => {
-          const keranjangs = res.data;
-          this.setState({ keranjangs });
-        })
-        .catch((error) => {
-          console.log("Error yaa ", error);
-        });
+      this.updateData();
     }
   }
 
   changeCategory = (value) => {
-    this.setState({
-      categoriYangDipilih: value,
-      menus: [],
-    });
+    this.setState({ categoriYangDipilih: value });
+  };
 
-    axios
-      .get(API_URL + "products?category.nama=" + value)
-      .then((res) => {
-        const menus = res.data;
-        this.setState({ menus });
+  masukKeranjang = (value) => {
+    const { keranjangs } = this.state;
+    const keranjangProduct = keranjangs.find(
+      (item) => item.product.id === value.id
+    );
+
+    if (!keranjangProduct) {
+      const keranjang = {
+        jumlah: 1,
+        total_harga: value.harga,
+        product: value,
+      };
+
+      this.setState({ keranjangs: [...keranjangs, keranjang] }, () => {
+        this.updateData();
+      });
+    } else {
+      const updatedKeranjangs = keranjangs.map((item) =>
+        item.product.id === value.id
+          ? {
+              ...item,
+              jumlah: item.jumlah + 1,
+              total_harga: item.total_harga + value.harga,
+            }
+          : item
+      );
+
+      this.setState({ keranjangs: updatedKeranjangs }, () => {
+        this.updateData();
+      });
+    }
+  };
+
+  fetchData = () => {
+    fetch(`${API_URL}`)
+      .then((response) => response.json())
+      .then((data) => {
+        const menus = data.products;
+        const categories = data.categories;
+        const keranjangs = data.keranjangs;
+        this.setState({ menus, categories, keranjangs });
       })
       .catch((error) => {
         console.log("Error yaa ", error);
       });
   };
 
-  masukKeranjang = (value) => {
-    axios
-      .get(API_URL + "keranjangs?product.id=" + value.id)
-      .then((res) => {
-        if (res.data.length === 0) {
-          const keranjang = {
-            jumlah: 1,
-            total_harga: value.harga,
-            product: value,
-          };
-
-          axios
-            .post(API_URL + "keranjangs", keranjang)
-            .then((res) => {
-              swal({
-                title: "Sukses Masuk Keranjang",
-                text: "Sukses Masuk Keranjang " + keranjang.product.nama,
-                icon: "success",
-                button: false,
-                timer: 1500,
-              });
-            })
-            .catch((error) => {
-              console.log("Error yaa ", error);
-            });
-        } else {
-          const keranjang = {
-            jumlah: res.data[0].jumlah + 1,
-            total_harga: res.data[0].total_harga + value.harga,
-            product: value,
-          };
-
-          axios
-            .put(API_URL + "keranjangs/" + res.data[0].id, keranjang)
-            .then((res) => {
-              swal({
-                title: "Sukses Masuk Keranjang",
-                text: "Sukses Masuk Keranjang " + keranjang.product.nama,
-                icon: "success",
-                button: false,
-                timer: 1500,
-              });
-            })
-            .catch((error) => {
-              console.log("Error yaa ", error);
-            });
-        }
+  updateData = () => {
+    const { keranjangs } = this.state;
+    fetch(`${API_URL}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ keranjangs }),
+    })
+      .then(() => {
+        swal({
+          title: "Sukses Update Keranjang",
+          icon: "success",
+          button: false,
+          timer: 1500,
+        });
       })
       .catch((error) => {
         console.log("Error yaa ", error);
@@ -127,12 +104,17 @@ export default class Home extends Component {
   };
 
   render() {
-    const { menus, categoriYangDipilih, keranjangs } = this.state;
+    const { menus, categoriYangDipilih, keranjangs, categories } = this.state;
+    const filteredMenus = menus.filter(
+      (menu) => menu.category.nama === categoriYangDipilih
+    );
+
     return (
       <div className="mt-3">
         <Container fluid>
           <Row>
             <ListCategories
+              categories={categories}
               changeCategory={this.changeCategory}
               categoriYangDipilih={categoriYangDipilih}
             />
@@ -142,8 +124,8 @@ export default class Home extends Component {
               </h4>
               <hr />
               <Row className="overflow-auto menu">
-                {menus &&
-                  menus.map((menu) => (
+                {filteredMenus &&
+                  filteredMenus.map((menu) => (
                     <Menus
                       key={menu.id}
                       menu={menu}

@@ -1,10 +1,8 @@
 import { faShoppingCart } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import axios from "axios";
 import React, { Component } from "react";
 import { Row, Col, Button } from "react-bootstrap";
 import { numberWithCommas } from "../utils/utils";
-import { API_URL } from "../utils/constants";
 import { Link } from "react-router-dom";
 
 export default class TotalBayar extends Component {

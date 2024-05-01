@@ -20,10 +20,6 @@ export default class Hasil extends Component {
     };
   }
 
-  clearKeranjangs = () => {
-    this.props({ keranjangs: [] });
-  };
-
   handleShow = (menuKeranjang) => {
     this.setState({
       showModal: true,
@@ -69,19 +65,28 @@ export default class Hasil extends Component {
 
     this.handleClose();
 
+    const { keranjangs } = this.props;
+    const keranjangIndex = keranjangs.findIndex(
+      (item) => item.id === this.state.keranjangDetail.id
+    );
+
     const data = {
-      jumlah: this.state.jumlah,
-      total_harga: this.state.totalHarga,
-      product: this.state.keranjangDetail.product,
-      keterangan: this.state.keterangan,
+      ...keranjangs,
+      [keranjangIndex]: {
+        id: this.state.keranjangDetail.id,
+        jumlah: this.state.jumlah,
+        total_harga: this.state.totalHarga,
+        product: this.state.keranjangDetail.product,
+        keterangan: this.state.keterangan,
+      },
     };
 
     axios
-      .put(API_URL + "keranjangs/" + this.state.keranjangDetail.id, data)
+      .put(`${API_URL}`, data)
       .then((res) => {
         swal({
           title: "Update Pesanan!",
-          text: "Sukses Update Pesanan " + data.product.nama,
+          text: "Sukses Update Pesanan " + data[keranjangIndex].product.nama,
           icon: "success",
           button: false,
           timer: 1500,
@@ -95,8 +100,11 @@ export default class Hasil extends Component {
   hapusPesanan = (id) => {
     this.handleClose();
 
+    const { keranjangs } = this.props;
+    const updatedKeranjangs = keranjangs.filter((item) => item.id !== id);
+
     axios
-      .delete(API_URL + "keranjangs/" + id)
+      .put(`${API_URL}`, { keranjangs: updatedKeranjangs })
       .then((res) => {
         swal({
           title: "Hapus Pesanan!",
@@ -162,11 +170,7 @@ export default class Hasil extends Component {
           </Card>
         )}
 
-        <TotalBayar
-          keranjangs={keranjangs}
-          clearKeranjangs={this.clearKeranjangs}
-          {...this.props}
-        />
+        <TotalBayar keranjangs={keranjangs} {...this.props} />
       </Col>
     );
   }
